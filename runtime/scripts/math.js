@@ -14,7 +14,7 @@ Copyright 2011-14 Newcastle University
  *
  * Provides {@link Numbas.math}, {@link Numbas.vectormath} and {@link Numbas.matrixmath}
  */
-Numbas.queueScript('math',['base','decimal'],function() {
+ Numbas.queueScript('math',['base','decimal'],function() {
     
     Decimal.set({ 
         precision: 40,
@@ -2019,6 +2019,43 @@ var math = Numbas.math = /** @lends Numbas.math */ {
             }
         }
         return factors;
+    },
+    /** Returns all factors of value `n`..
+     *
+     * @param {number} n
+     * @returns {Array.<number>} - Factors of n.
+     */
+    factors: function(n) {
+        if(n<=0) {
+            return [];
+        }
+        var factor_arr = [];
+
+        for(let i =1; i<=n; i++){
+            if(n % i === 0){
+                factor_arr.push(i);
+            }
+        }  
+        return factor_arr; 
+    },
+    /** Returns all proper factors of value `n`..
+     *
+     * @param {number} n
+     * @returns {Array.<number>} - Proper factors of n.
+     */
+    proper_factors: function(n) {
+        if(n<=2) {
+            return [];
+        }
+        var factor_arr = [];
+
+        for(let i = 2; i<=n; i++){
+            if(n % i === 0){
+                factor_arr.push(i);
+            }
+        }  
+        factor_arr.pop();
+        return factor_arr; 
     },
     /** Sum the elements in the given list.
      *
