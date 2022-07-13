@@ -63,6 +63,7 @@ function Exam(store)
 {
     this.store = store;
     this.signals = new Numbas.schedule.SignalBox();
+    this.events = new Numbas.schedule.EventBox();
     var scope = new Numbas.jme.Scope(Numbas.jme.builtinScope);
     for(var extension in Numbas.extensions) {
         if('scope' in Numbas.extensions[extension]) {
@@ -985,6 +986,7 @@ Exam.prototype = /** @lends Numbas.Exam.prototype */ {
      */
     tryChangeQuestion: function(i)
     {
+        this.events.trigger('tryChangeQuestion', i);
         switch(this.settings.navigateMode) {
             case 'sequence':
                 if( ! (
@@ -1430,7 +1432,7 @@ QuestionGroup.prototype = {
         exam.questionList.push(question);
         this.questionList.push(question);
         exam.display && exam.display.updateQuestionList();
-        this.events.trigger('createQuestion', question);
+        this.exam.events.trigger('createQuestion', question);
         return question;
     }
 }

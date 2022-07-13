@@ -1265,6 +1265,8 @@ var util = Numbas.util = /** @lends Numbas.util */ {
         nestrb = nestrb || '';
         var bits = [];
         var start = 0;
+        var depth = 0;
+        var m;
         for(var i=0;i<length;i++) {
             if(str.charAt(i)=='\\') {
                 i += 1;
@@ -1276,23 +1278,35 @@ var util = Numbas.util = /** @lends Numbas.util */ {
                 bits.push({kind:'lb'});
                 i += lb.length-1;
                 start = i+1;
+                depth += 1;
             } else if(str.slice(i,i+rb.length)==rb) {
                 bits.push({kind:'str',str:str.slice(start,i)});
                 bits.push({kind:'rb'});
                 i += rb.length-1;
                 start = i+1;
+                depth -= 1;
+            } else if(depth>0 && (m = re_jme_string.exec(str.slice(i)))) {
+                bits.push({kind:'str',str: str.slice(start,i)});
+                bits.push({kind:'jme_str', str: m[0]});
+                i += m[0].length-1;
+                start = i + 1;
             }
         }
         if(start<str.length) {
             bits.push({kind:'str',str:str.slice(start)});
         }
+
+        depth = 0;
         var out = [];
-        var depth = 0;
         var s = '';
         var s_plain = '';
         var s_unclosed = '';
+        var in_string = false;
         for(var i=0;i<bits.length;i++) {
             switch(bits[i].kind) {
+                case 'jme_str':
+                    s += bits[i].str;
+                    break;
                 case 'str':
                     s += bits[i].str;
                     s_unclosed += bits[i].str;
@@ -1652,6 +1666,14 @@ var util = Numbas.util = /** @lends Numbas.util */ {
         }
     }
 };
+
+/** 
+ * A regular expression matching JME string tokens
+ * 
+ * @type {string}
+ */
+var re_jme_string = util.re_jme_string = /^("""|'''|['"])((?:[^\1\\]|\\.)*?)\1/;
+
 /** Different styles of writing a decimal.
  *
  * Objects of the form `{re,format}`, where `re` is a regex recognising numbers in this style, and `format(integer,decimal)` renders the number in this style.
@@ -4029,118 +4051,6 @@ var math = Numbas.math = /** @lends Numbas.math */ {
             }
         }
         return factors;
-    },
-          /** Combines two matrices vertically
-     * 
-     * @param {matrix} m1
-     * @param {matrix} m2
-     * @returns {matrix}
-     */
-           combine_vertically: function(m1,m2){
- 
-            lengths = []
-    
-            for (var i = 0; i < m1.length + m2.length; i++) {
-                lengths.push((i < m1.length) ? m1[i].length : m2[i-m1.length].length);
-            }
-    
-            var max_length = Numbas.math.listmax(lengths);
-    
-            var height = m1.length + m2.length;
-            
-            var m3 = [];
-            
-            for (var i = 0; i < height; i++){
-    
-                val = i < m1.length ? m1[i] : m2[i - m1.length];
-                if (val.length != max_length){
-                    for (var j = 0; j < max_length-val.length; j++){
-                        val.push(0);
-                    }
-                }
-                m3.push(val);
-            }
-        
-            return m3;
-        },
-        /** Combines two matrices horizontally
-         * 
-         * @param {matrix} m1
-         * @param {matrix} m2
-         * @returns {matrix}
-         */
-        combine_horizontally: function(m1,m2){
-            function addPadding(m){
-                for (var i = m.length; i < height; i++){
-                    padRow = [];
-                    for (var x = 0; x < m[0].length; x++){
-                        padRow.push(0);
-                    }
-                    m.push(padRow);
-                }
-            }
-    
-            height = m1.length > m2.length ? m1.length : m2.length;
-            if (height > m2.length){
-                addPadding(m2);
-            }else if (height > m1.length){
-                addPadding(m1);
-            }
-    
-    
-            var m3 = [];
-            for (var j = 0; j < height; j++){
-                m3.push(m1[j].concat(m2[j]));
-            }
-            return m3;                         
-        },
-      
-         /** Combines two matrices diagonally
-         * 
-         * @param {matrix} m1
-         * @param {matrix} m2
-         * @returns {matrix}
-         */
-          /** Combines two matrices diagonally
-     * 
-     * @param {matrix} m1
-     * @param {matrix} m2
-     * @returns {matrix}
-     */
-    combine_diagonally: function(m1,m2){
-        function getWidth(m){
-            widths = [];
-            for (var i = 0; i < m.rows; i++){
-                widths.push(m[i].length);
-            }
-            return Numbas.math.listmax(widths);
-        }
-
-        m1_width = getWidth(m1);
-        m2_width = getWidth(m2);
-
-        height = m1.length + m2.length;
-
-        m3 = [];
-
-        for (var x = 0; x < height; x++){
-            m3.push([]);
-        }
-
-        for (var i = 0; i < height; i++){
-            for (var j = 0; j < m1_width + m2_width; j++){
-
-
-                let val = i < m1.length && j < m1_width ? m1[i][j] 
-                        : i >= m1.length && j >= m1_width ? m2[i-m1.length][j-m1_width]
-                        : 0;
-
-                m3[i].splice(j, 0, val);        
-
-            }
-        }
-
-        return m3;
     },
     /** Sum the elements in the given list.
      *
@@ -13596,7 +13506,7 @@ jme.Parser.prototype = /** @lends Numbas.jme.Parser.prototype */ {
         re_number: /^[0-9]+(?:\x2E[0-9]+)?/,
         re_name: /^{?((?:(?:[a-zA-Z]+):)*)((?:\$?[a-zA-Z_][a-zA-Z0-9_]*'*)|\?\??|[π∞])}?/i,
         re_punctuation: /^([\(\),\[\]])/,
-        re_string: /^("""|'''|['"])((?:[^\1\\]|\\.)*?)\1/,
+        re_string: util.re_jme_string,
         re_comment: /^\/\/.*?(?:\n|$)/,
         re_keypair: /^:/,
     },
@@ -17753,11 +17663,20 @@ newBuiltin('sum_cells',[TMatrix],TNum,matrixmath.sum_cells);
 newBuiltin('numrows', [TMatrix], TNum,function(m) {return matrixmath.numrows(m)});
 newBuiltin('numcolumns', [TMatrix], TNum,function(m) {return matrixmath.numcolumns(m)});
 newBuiltin('combine_vertically',[TMatrix,TMatrix],TMatrix,function(m1,m2) {
-    return matrixmath.combine_vertically(m1,m2)});
+    return matrixmath.combine_vertically(m1,m2)
+});
+newBuiltin('stack',[TMatrix,TMatrix],TMatrix,function(m1,m2) {
+    return matrixmath.combine_vertically(m1,m2)
+});
 newBuiltin('combine_horizontally',[TMatrix,TMatrix],TMatrix,function(m1,m2) {
-    return matrixmath.combine_horizontally(m1,m2)});
+    return matrixmath.combine_horizontally(m1,m2)
+});
+newBuiltin('augment',[TMatrix,TMatrix],TMatrix,function(m1,m2) {
+    return matrixmath.combine_horizontally(m1,m2)
+});
 newBuiltin('combine_diagonally',[TMatrix,TMatrix],TMatrix,function(m1,m2) {
-    return matrixmath.combine_diagonally(m1,m2)});
+    return matrixmath.combine_diagonally(m1,m2)
+});
 newBuiltin('..', [TNum,TNum], TRange, math.defineRange);
 newBuiltin('#', [TRange,TNum], TRange, math.rangeSteps);
 newBuiltin('in',[TNum,TRange],TBool,function(x,r) {
